@@ -9,9 +9,11 @@ import {
   LinearProgress,
   CircularProgress,
 } from '@mui/material';
-import { useParams } from 'react-router-dom';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate, useParams } from 'react-router-dom';
 import QuestionViewerCard from '../components/survey/QuestionViewerCard';
 import { SurveyService } from '../services/surveyService';
+import { AuthStorage } from '../services/authStorage';
 import type { ApiError } from '../services/api';
 import { getAllQuestions } from '../utils/surveyUtils';
 import type { Answer, Question, Survey } from '../types/survey.types';
@@ -31,6 +33,8 @@ function findMissingRequired(
 
 export default function TakeSurvey() {
   const { surveyId } = useParams<{ surveyId: string }>();
+  const navigate = useNavigate();
+  const isLoggedIn = AuthStorage.isLoggedIn();
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -95,6 +99,15 @@ export default function TakeSurvey() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             מועד הסגירה של הסקר חלף ולא ניתן עוד להשיב עליו.
           </Typography>
+          {isLoggedIn && (
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate('/dashboard')}
+              sx={{ mt: 3 }}
+            >
+              חזרה ללוח הבקרה
+            </Button>
+          )}
         </Paper>
       </Box>
     );
@@ -119,6 +132,15 @@ export default function TakeSurvey() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             ייתכן שהקישור שגוי או שהסקר נמחק.
           </Typography>
+          {isLoggedIn && (
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate('/dashboard')}
+              sx={{ mt: 3 }}
+            >
+              חזרה ללוח הבקרה
+            </Button>
+          )}
         </Paper>
       </Box>
     );
@@ -202,6 +224,15 @@ export default function TakeSurvey() {
             תודה על מילוי הסקר!
           </Typography>
           <Typography color="text.secondary">התשובות שלך נשמרו בהצלחה.</Typography>
+          {isLoggedIn && (
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate('/dashboard')}
+              sx={{ mt: 3 }}
+            >
+              חזרה ללוח הבקרה
+            </Button>
+          )}
         </Paper>
       </Box>
     );
@@ -210,6 +241,15 @@ export default function TakeSurvey() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
       <Container maxWidth="md">
+        {isLoggedIn && (
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/dashboard')}
+            sx={{ mb: 2 }}
+          >
+            חזרה ללוח הבקרה
+          </Button>
+        )}
         <Paper elevation={3} sx={{ p: 4, mb: 3 }}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
             {survey.title}

@@ -90,9 +90,11 @@ export default function Dashboard() {
           <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
             הסקרים שלי
           </Typography>
-          <Button variant="contained" onClick={() => navigate('/create-survey')}>
-            יצירת סקר חדש
-          </Button>
+          {surveys.length > 0 && (
+            <Button variant="contained" onClick={() => navigate('/create-survey')}>
+              יצירת סקר חדש
+            </Button>
+          )}
         </Box>
 
         {error && (
