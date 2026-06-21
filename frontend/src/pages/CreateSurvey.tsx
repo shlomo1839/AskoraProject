@@ -345,7 +345,7 @@ export default function CreateSurvey() {
           />
           <TextField
             fullWidth
-            label="תיאור הסקר (אופציונלי)"
+            label="תיאור הסקר"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             multiline
@@ -355,7 +355,7 @@ export default function CreateSurvey() {
           <TextField
             fullWidth
             type="datetime-local"
-            label="תאריך סגירת הסקר (אופציונלי)"
+            label="תאריך סגירת הסקר"
             value={closesAt}
             onChange={(e) => setClosesAt(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
