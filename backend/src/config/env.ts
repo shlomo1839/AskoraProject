@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /** שם מסד הנתונים הקבוע של הפרויקט */
-export const DB_NAME = "survey-app";
+export const DB_NAME = "askora";
 
 export const env = {
   port: Number(process.env.PORT) || 5000,
