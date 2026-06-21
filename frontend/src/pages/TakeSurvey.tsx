@@ -12,6 +12,7 @@ import {
 import { useParams } from 'react-router-dom';
 import QuestionViewerCard from '../components/survey/QuestionViewerCard';
 import { SurveyService } from '../services/surveyService';
+import type { ApiError } from '../services/api';
 import { getAllQuestions } from '../utils/surveyUtils';
 import type { Answer, Question, Survey } from '../types/survey.types';
 
@@ -33,6 +34,7 @@ export default function TakeSurvey() {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [closed, setClosed] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({});
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [error, setError] = useState('');
@@ -48,7 +50,13 @@ export default function TakeSurvey() {
 
     SurveyService.getSurveyById(surveyId)
       .then(setSurvey)
-      .catch(() => setNotFound(true))
+      .catch((err: ApiError) => {
+        if (err?.code === 'SURVEY_CLOSED') {
+          setClosed(true);
+        } else {
+          setNotFound(true);
+        }
+      })
       .finally(() => setLoading(false));
   }, [surveyId]);
 
@@ -64,6 +72,30 @@ export default function TakeSurvey() {
         }}
       >
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (closed) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
+          p: 2,
+        }}
+      >
+        <Paper elevation={3} sx={{ p: 4, maxWidth: 480, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+            הסקר נסגר
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            מועד הסגירה של הסקר חלף ולא ניתן עוד להשיב עליו.
+          </Typography>
+        </Paper>
       </Box>
     );
   }
@@ -143,6 +175,10 @@ export default function TakeSurvey() {
       await SurveyService.submitSurvey(survey.id, formattedAnswers);
       setSubmitted(true);
     } catch (err) {
+      if ((err as ApiError)?.code === 'SURVEY_CLOSED') {
+        setClosed(true);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'שגיאה בשליחת הסקר');
     } finally {
       setSubmitting(false);

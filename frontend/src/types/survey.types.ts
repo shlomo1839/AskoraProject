@@ -22,6 +22,7 @@ export interface Survey {
   sections: Section[];
   createdBy: string;
   createdAt: string;
+  closesAt?: string | null;
 }
 
 export interface Answer {

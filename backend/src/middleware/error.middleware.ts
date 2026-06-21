@@ -2,10 +2,12 @@ import type { Request, Response, NextFunction } from 'express';
 
 export class AppError extends Error {
   statusCode: number;
+  code?: string;
 
-  constructor(statusCode: number, message: string) {
+  constructor(statusCode: number, message: string, code?: string) {
     super(message);
     this.statusCode = statusCode;
+    this.code = code;
   }
 }
 
@@ -20,11 +22,12 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   const statusCode = err instanceof AppError ? err.statusCode : 500;
+  const code = err instanceof AppError ? err.code : undefined;
   const message = err.message || 'שגיאה בשרת';
 
   if (statusCode === 500) {
     console.error(err);
   }
 
-  res.status(statusCode).json({ message });
+  res.status(statusCode).json({ message, ...(code ? { code } : {}) });
 }

@@ -20,6 +20,21 @@ import { SurveyService } from '../services/surveyService';
 import { createEmptyQuestion, createEmptySection } from '../utils/surveyUtils';
 import type { Question, Section } from '../types/survey.types';
 
+// Converts an ISO timestamp to the value format expected by <input type="datetime-local">.
+function isoToLocalInput(iso?: string | null): string {
+  if (!iso) {
+    return '';
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+}
+
 export default function CreateSurvey() {
   const navigate = useNavigate();
   const { surveyId } = useParams<{ surveyId: string }>();
@@ -28,6 +43,7 @@ export default function CreateSurvey() {
   const currentUser = AuthStorage.getCurrentUser();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [closesAt, setClosesAt] = useState('');
   const [sections, setSections] = useState<Section[]>([createEmptySection()]);
   const [titleError, setTitleError] = useState('');
   const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
@@ -63,6 +79,7 @@ export default function CreateSurvey() {
 
         setTitle(existingSurvey.title);
         setDescription(existingSurvey.description);
+        setClosesAt(isoToLocalInput(existingSurvey.closesAt));
         setSections(existingSurvey.sections);
       })
       .catch(() => setGeneralError('הסקר לא נמצא'))
@@ -233,6 +250,7 @@ export default function CreateSurvey() {
       title: title.trim(),
       description: description.trim(),
       sections,
+      closesAt: closesAt ? new Date(closesAt).toISOString() : null,
     };
 
     setSaving(true);
@@ -255,6 +273,7 @@ export default function CreateSurvey() {
       setDialogOpen(true);
       setTitle('');
       setDescription('');
+      setClosesAt('');
       setSections([createEmptySection()]);
     } catch (err) {
       setGeneralError(err instanceof Error ? err.message : 'שגיאה בשמירת הסקר');
@@ -331,6 +350,16 @@ export default function CreateSurvey() {
             onChange={(e) => setDescription(e.target.value)}
             multiline
             rows={2}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            type="datetime-local"
+            label="תאריך סגירת הסקר (אופציונלי)"
+            value={closesAt}
+            onChange={(e) => setClosesAt(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            helperText="לאחר מועד זה לא ניתן יהיה להשיב על הסקר. השאר ריק כדי שהסקר יישאר פתוח תמיד."
           />
         </Box>
 

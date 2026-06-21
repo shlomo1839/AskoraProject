@@ -4,10 +4,12 @@ import { Survey, toPublicSurvey } from '../models/Survey';
 import { Submission } from '../models/Submission';
 import { validateSurveyInput } from '../utils/validateSurvey';
 import {
+  assertSurveyOpen,
   findSurveyOrThrow,
   getRouteParam,
   verifySurveyOwner,
 } from '../utils/surveyHelpers';
+import { getOptionalUserId } from '../middleware/auth.middleware';
 import type { ISection } from '../models/Survey';
 
 interface SurveyBody {
@@ -15,6 +17,7 @@ interface SurveyBody {
   title?: string;
   description?: string;
   sections?: ISection[];
+  closesAt?: string | null;
 }
 
 export async function getMySurveys(req: Request, res: Response): Promise<void> {
@@ -38,6 +41,7 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
     title: validated.title,
     description: validated.description,
     sections: validated.sections,
+    closesAt: validated.closesAt,
     createdBy: userId,
   });
 
@@ -49,6 +53,13 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
 
 export async function getSurveyById(req: Request, res: Response): Promise<void> {
   const survey = await findSurveyOrThrow(getRouteParam(req, 'id'));
+
+  // The owner may always load the survey (e.g. to edit or extend the deadline).
+  // Respondents are blocked once the deadline has passed.
+  const requesterId = getOptionalUserId(req);
+  if (survey.createdBy !== requesterId) {
+    assertSurveyOpen(survey);
+  }
 
   res.json({
     survey: toPublicSurvey(survey),
@@ -68,6 +79,7 @@ export async function updateSurvey(req: Request, res: Response): Promise<void> {
   survey.title = validated.title;
   survey.description = validated.description;
   survey.sections = validated.sections;
+  survey.closesAt = validated.closesAt;
   await survey.save();
 
   res.json({

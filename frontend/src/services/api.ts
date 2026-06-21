@@ -30,10 +30,18 @@ api.interceptors.request.use((config) => {
  * Passes successful responses through, but catches server errors
  * to extract a clean error message for the frontend to use.
  */
+export interface ApiError extends Error {
+  status?: number;
+  code?: string;
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || 'שגיאה בשרת';
-    throw new Error(message);
+    const apiError: ApiError = new Error(message);
+    apiError.status = error.response?.status;
+    apiError.code = error.response?.data?.code;
+    throw apiError;
   }
 );

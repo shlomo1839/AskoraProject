@@ -21,3 +21,19 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     next(new AppError(401, 'טוקן לא תקין או שפג תוקפו'));
   }
 }
+
+// Returns the user id when a valid token is present, otherwise null.
+// Used on public routes that behave differently for the resource owner.
+export function getOptionalUserId(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  try {
+    return verifyToken(authHeader.slice(7)).userId;
+  } catch {
+    return null;
+  }
+}

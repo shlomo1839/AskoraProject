@@ -24,6 +24,7 @@ export interface ISurvey extends Document {
   sections: ISection[];
   createdBy: string;
   createdAt: Date;
+  closesAt?: Date | null;
 }
 
 const questionSchema = new Schema<IQuestion>(
@@ -54,6 +55,8 @@ const surveySchema = new Schema<ISurvey>(
     description: { type: String, default: '', trim: true },
     sections: { type: [sectionSchema], required: true },
     createdBy: { type: String, required: true, index: true },
+    // Optional deadline. When null, the survey never closes automatically.
+    closesAt: { type: Date, default: null },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
@@ -70,5 +73,6 @@ export function toPublicSurvey(survey: ISurvey) {
     sections: survey.sections,
     createdBy: survey.createdBy,
     createdAt: survey.createdAt.toISOString(),
+    closesAt: survey.closesAt ? survey.closesAt.toISOString() : null,
   };
 }

@@ -6,6 +6,7 @@ interface SurveyPayload {
   title: string;
   description: string;
   sections: Survey['sections'];
+  closesAt?: string | null;
 }
 
 export const SurveyService = {

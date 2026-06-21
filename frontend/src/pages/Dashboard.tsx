@@ -41,6 +41,9 @@ export default function Dashboard() {
     return new Date(dateString).toLocaleDateString('he-IL');
   };
 
+  const isSurveyClosed = (survey: Survey) =>
+    Boolean(survey.closesAt) && new Date(survey.closesAt as string).getTime() <= Date.now();
+
   const showMessage = (message: string) => {
     setSnackbar({ open: true, message });
   };
@@ -130,6 +133,9 @@ export default function Dashboard() {
                       <Chip label={`${getTotalSectionCount(survey)} קטעים`} size="small" />
                       <Chip label={`${getTotalQuestionCount(survey)} שאלות`} size="small" />
                       <Chip label={formatDate(survey.createdAt)} size="small" variant="outlined" />
+                      {isSurveyClosed(survey) && (
+                        <Chip label="הסקר נסגר" size="small" color="error" />
+                      )}
                     </Box>
                   </CardContent>
                   <CardActions sx={{ p: 2, pt: 0, flexWrap: 'wrap', gap: 0.5 }}>

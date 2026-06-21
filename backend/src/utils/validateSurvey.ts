@@ -6,12 +6,14 @@ interface SurveyInput {
   description?: string;
   sections?: ISection[];
   questions?: unknown;
+  closesAt?: string | null;
 }
 
 export function validateSurveyInput(input: SurveyInput): {
   title: string;
   description: string;
   sections: ISection[];
+  closesAt: Date | null;
 } {
   if (input.questions !== undefined) {
     throw new AppError(400, 'פורמט לא נתמך: יש לשלוח שאלות בתוך קטעים (sections) בלבד');
@@ -20,6 +22,15 @@ export function validateSurveyInput(input: SurveyInput): {
   const title = input.title?.trim() ?? '';
   const description = input.description?.trim() ?? '';
   const sections = input.sections ?? [];
+
+  let closesAt: Date | null = null;
+  if (input.closesAt != null && input.closesAt !== '') {
+    const parsed = new Date(input.closesAt);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new AppError(400, 'תאריך סגירת הסקר אינו תקין');
+    }
+    closesAt = parsed;
+  }
 
   if (!title) {
     throw new AppError(400, 'יש להזין כותרת לסקר');
@@ -52,5 +63,5 @@ export function validateSurveyInput(input: SurveyInput): {
     }
   }
 
-  return { title, description, sections };
+  return { title, description, sections, closesAt };
 }

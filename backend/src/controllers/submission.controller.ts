@@ -1,7 +1,12 @@
 import type { Request, Response } from 'express';
 import type { AuthRequest } from '../types/auth-request';
 import { Submission, toPublicSubmission, type IAnswer } from '../models/Submission';
-import { findSurveyOrThrow, getRouteParam, verifySurveyOwner } from '../utils/surveyHelpers';
+import {
+  assertSurveyOpen,
+  findSurveyOrThrow,
+  getRouteParam,
+  verifySurveyOwner,
+} from '../utils/surveyHelpers';
 import { validateSubmissionAnswers } from '../utils/validateSubmission';
 
 interface SubmitBody {
@@ -14,6 +19,10 @@ export async function submitSurvey(req: Request, res: Response): Promise<void> {
   const body = req.body as SubmitBody;
 
   const survey = await findSurveyOrThrow(surveyId);
+
+  // Re-check the deadline at submit time, in case it passed while answering.
+  assertSurveyOpen(survey);
+
   const validatedAnswers = validateSubmissionAnswers(survey, body.answers ?? []);
 
   const submission = await Submission.create({
