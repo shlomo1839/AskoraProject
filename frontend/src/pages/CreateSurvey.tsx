@@ -372,6 +372,7 @@ export default function CreateSurvey() {
             key={section.id}
             section={section}
             sectionIndex={sectionIndex}
+            sections={sections}
             sectionError={sectionErrors[section.id]}
             questionErrors={questionErrors}
             canDelete={sections.length > 1}

@@ -67,9 +67,12 @@ export default function Login() {
       }}
     >
       <Container maxWidth="xs">
+        <Typography variant="h4" component="h1" align="center" sx={{ fontWeight: 'bold', mb: 3 }}>
+          ברוך הבא לאסקורה
+        </Typography>
         <Card elevation={4} sx={{ borderRadius: 3 }}>
           <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
+            <Typography variant="h5" component="h2" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
               {isLogin ? 'התחברות למערכת' : 'הרשמה למערכת'}
             </Typography>
 
