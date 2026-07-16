@@ -40,6 +40,8 @@ export function validateSurveyInput(input: SurveyInput): {
     throw new AppError(400, 'יש להוסיף לפחות קטע אחד');
   }
 
+  const seenQuestionIds = new Set<string>();
+
   for (const section of sections) {
     if (!section.title?.trim()) {
       throw new AppError(400, 'יש להזין כותרת לכל קטע');
@@ -60,6 +62,20 @@ export function validateSurveyInput(input: SurveyInput): {
       ) {
         throw new AppError(400, 'יש למלא את כל אפשרויות הבחירה');
       }
+
+      if (question.dependsOn) {
+        if (!question.dependsOn.questionId) {
+          throw new AppError(400, 'התניה חסרה מזהה שאלה קודמת');
+        }
+        if (!seenQuestionIds.has(question.dependsOn.questionId)) {
+          throw new AppError(400, 'שאלה לא יכולה להיות תלויה בעצמה או בשאלה שמופיעה אחריה');
+        }
+        if (!question.dependsOn.value) {
+          throw new AppError(400, 'יש להגדיר ערך לתנאי התצוגה');
+        }
+      }
+
+      seenQuestionIds.add(question.id);
     }
   }
 
