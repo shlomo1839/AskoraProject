@@ -16,6 +16,7 @@ import type { Section } from '../../types/survey.types';
 interface SectionEditorCardProps {
   section: Section;
   sectionIndex: number;
+  sections: Section[];
   sectionError?: string;
   questionErrors: Record<string, string>;
   canDelete: boolean;
@@ -29,6 +30,7 @@ interface SectionEditorCardProps {
 export default function SectionEditorCard({
   section,
   sectionIndex,
+  sections,
   sectionError,
   questionErrors,
   canDelete,
@@ -77,16 +79,30 @@ export default function SectionEditorCard({
           שאלות בקטע
         </Typography>
 
-        {section.questions.map((question, questionIndex) => (
-          <QuestionEditorCard
-            key={question.id}
-            question={question}
-            index={questionIndex}
-            error={questionErrors[question.id]}
-            onChange={(updated) => onQuestionChange(questionIndex, updated)}
-            onDelete={() => onDeleteQuestion(questionIndex)}
-          />
-        ))}
+        {section.questions.map((question, questionIndex) => {
+          const availableQuestions: Section['questions'] = [];
+          for (let i = 0; i <= sectionIndex; i++) {
+            const s = sections[i];
+            for (let j = 0; j < s.questions.length; j++) {
+              if (i === sectionIndex && j >= questionIndex) break;
+              if (s.questions[j].type === 'multiple-choice') {
+                availableQuestions.push(s.questions[j]);
+              }
+            }
+          }
+
+          return (
+            <QuestionEditorCard
+              key={question.id}
+              question={question}
+              index={questionIndex}
+              error={questionErrors[question.id]}
+              availableQuestions={availableQuestions}
+              onChange={(updated) => onQuestionChange(questionIndex, updated)}
+              onDelete={() => onDeleteQuestion(questionIndex)}
+            />
+          );
+        })}
 
         <Button startIcon={<AddIcon />} onClick={onAddQuestion} size="small">
           הוסף שאלה לקטע

@@ -12,6 +12,7 @@ import {
   Switch,
   IconButton,
   Button,
+  Divider,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,6 +22,7 @@ interface QuestionEditorCardProps {
   question: Question;
   index: number;
   error?: string;
+  availableQuestions: Question[];
   onChange: (updatedQuestion: Question) => void;
   onDelete: () => void;
 }
@@ -29,6 +31,7 @@ export default function QuestionEditorCard({
   question,
   index,
   error,
+  availableQuestions,
   onChange,
   onDelete,
 }: QuestionEditorCardProps) {
@@ -69,6 +72,22 @@ export default function QuestionEditorCard({
     const currentOptions = question.options ?? [];
     const updatedOptions = currentOptions.filter((_, i) => i !== optionIndex);
     onChange({ ...question, options: updatedOptions });
+  };
+
+  const handleDependsOnChange = (questionId: string) => {
+    if (!questionId) {
+      onChange({ ...question, dependsOn: null });
+    } else {
+      const depQ = availableQuestions.find((q) => q.id === questionId);
+      const defaultValue = depQ?.options?.[0] || '';
+      onChange({ ...question, dependsOn: { questionId, value: defaultValue } });
+    }
+  };
+
+  const handleDependsOnValueChange = (value: string) => {
+    if (question.dependsOn) {
+      onChange({ ...question, dependsOn: { ...question.dependsOn, value } });
+    }
   };
 
   return (
@@ -157,6 +176,51 @@ export default function QuestionEditorCard({
           <Typography variant="body2" color="text.secondary">
             המשיבים יוכלו לכתוב תשובה חופשית
           </Typography>
+        )}
+
+        {availableQuestions.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              תלות בשאלה קודמת (אופציונלי)
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <FormControl sx={{ minWidth: 200 }} size="small">
+                <InputLabel>הצג רק אם השאלה...</InputLabel>
+                <Select
+                  value={question.dependsOn?.questionId || ''}
+                  label="הצג רק אם השאלה..."
+                  onChange={(e) => handleDependsOnChange(e.target.value)}
+                >
+                  <MenuItem value=""><em>ללא תלות</em></MenuItem>
+                  {availableQuestions.map((q) => (
+                    <MenuItem key={q.id} value={q.id}>
+                      {q.title || 'שאלה ללא כותרת'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {question.dependsOn?.questionId && (
+                <FormControl sx={{ minWidth: 200 }} size="small">
+                  <InputLabel>שווה לתשובה...</InputLabel>
+                  <Select
+                    value={question.dependsOn.value || ''}
+                    label="שווה לתשובה..."
+                    onChange={(e) => handleDependsOnValueChange(e.target.value)}
+                  >
+                    {availableQuestions
+                      .find((q) => q.id === question.dependsOn?.questionId)
+                      ?.options?.map((opt, i) => (
+                        <MenuItem key={i} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          </>
         )}
       </CardContent>
     </Card>
