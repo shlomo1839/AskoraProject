@@ -209,13 +209,32 @@ export default function QuestionEditorCard({
                     label="שווה לתשובה..."
                     onChange={(e) => handleDependsOnValueChange(e.target.value)}
                   >
-                    {availableQuestions
-                      .find((q) => q.id === question.dependsOn?.questionId)
-                      ?.options?.map((opt, i) => (
-                        <MenuItem key={i} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ))}
+                    {(() => {
+                      const depQ = availableQuestions.find((q) => q.id === question.dependsOn?.questionId);
+                      if (!depQ) return null;
+                      
+                      const validOptions = (depQ.options || []).filter(opt => opt.trim() !== '');
+                      const uniqueOptions = Array.from(new Set(validOptions));
+                      
+                      if (uniqueOptions.length === 0) {
+                        return (
+                          <MenuItem disabled value="">
+                            <em>אנא הוסף תחילה תשובות לשאלה המקורית</em>
+                          </MenuItem>
+                        );
+                      }
+
+                      // If the current value is not in uniqueOptions (e.g. because it was left empty originally),
+                      // we need a hidden empty MenuItem so MUI doesn't complain about out-of-range value.
+                      return [
+                        <MenuItem key="hidden-empty" value="" style={{ display: 'none' }} />,
+                        ...uniqueOptions.map((opt, i) => (
+                          <MenuItem key={i} value={opt}>
+                            {opt}
+                          </MenuItem>
+                        ))
+                      ];
+                    })()}
                   </Select>
                 </FormControl>
               )}
