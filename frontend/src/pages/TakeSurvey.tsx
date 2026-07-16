@@ -10,10 +10,9 @@ import {
   CircularProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import QuestionViewerCard from '../components/survey/QuestionViewerCard';
 import { SurveyService } from '../services/surveyService';
-import { AuthStorage } from '../services/authStorage';
 import type { ApiError } from '../services/api';
 import { getAllQuestions } from '../utils/surveyUtils';
 import type { Answer, Question, Survey } from '../types/survey.types';
@@ -34,7 +33,8 @@ function findMissingRequired(
 export default function TakeSurvey() {
   const { surveyId } = useParams<{ surveyId: string }>();
   const navigate = useNavigate();
-  const isLoggedIn = AuthStorage.isLoggedIn();
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -99,7 +99,7 @@ export default function TakeSurvey() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             מועד הסגירה של הסקר חלף ולא ניתן עוד להשיב עליו.
           </Typography>
-          {isLoggedIn && (
+          {isPreview && (
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate('/dashboard')}
@@ -132,7 +132,7 @@ export default function TakeSurvey() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             ייתכן שהקישור שגוי או שהסקר נמחק.
           </Typography>
-          {isLoggedIn && (
+          {isPreview && (
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate('/dashboard')}
@@ -169,11 +169,16 @@ export default function TakeSurvey() {
   };
 
   const handleNext = () => {
-    if (!validateCurrentSection()) {
+    if (!isPreview && !validateCurrentSection()) {
       return;
     }
 
     setCurrentSectionIndex((prev) => prev + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePrev = () => {
+    setCurrentSectionIndex((prev) => prev - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -224,7 +229,7 @@ export default function TakeSurvey() {
             תודה על מילוי הסקר!
           </Typography>
           <Typography color="text.secondary">התשובות שלך נשמרו בהצלחה.</Typography>
-          {isLoggedIn && (
+          {isPreview && (
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate('/dashboard')}
@@ -241,7 +246,7 @@ export default function TakeSurvey() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
       <Container maxWidth="md">
-        {isLoggedIn && (
+        {isPreview && (
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
@@ -249,6 +254,11 @@ export default function TakeSurvey() {
           >
             חזרה ללוח הבקרה
           </Button>
+        )}
+        {isPreview && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            מצב תצוגה מקדימה — ניתן לנווט חופשית בין הדפים. תשובות לא יישלחו.
+          </Alert>
         )}
         <Paper elevation={3} sx={{ p: 4, mb: 3 }}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -294,16 +304,27 @@ export default function TakeSurvey() {
           />
         ))}
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-          {isLastSection ? (
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? 'שולח...' : 'שליחת הסקר'}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+          {isPreview && currentSectionIndex > 0 && (
+            <Button variant="outlined" size="large" onClick={handlePrev}>
+              הקודם
             </Button>
+          )}
+          {isLastSection ? (
+            isPreview ? (
+              <Button variant="contained" size="large" disabled>
+                שליחת הסקר (תצוגה מקדימה)
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? 'שולח...' : 'שליחת הסקר'}
+              </Button>
+            )
           ) : (
             <Button variant="contained" size="large" onClick={handleNext}>
               הבא

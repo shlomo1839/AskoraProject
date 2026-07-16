@@ -2,12 +2,18 @@ import mongoose, { Schema, type Document } from 'mongoose';
 
 export type QuestionType = 'open' | 'multiple-choice' | 'rating';
 
+export interface ICondition {
+  questionId: string;
+  value: string;
+}
+
 export interface IQuestion {
   id: string;
   type: QuestionType;
   title: string;
   options?: string[];
   isRequired: boolean;
+  dependsOn?: ICondition | null;
 }
 
 export interface ISection {
@@ -27,6 +33,14 @@ export interface ISurvey extends Document {
   closesAt?: Date | null;
 }
 
+const conditionSchema = new Schema<ICondition>(
+  {
+    questionId: { type: String, required: true },
+    value: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const questionSchema = new Schema<IQuestion>(
   {
     id: { type: String, required: true },
@@ -34,6 +48,7 @@ const questionSchema = new Schema<IQuestion>(
     title: { type: String, required: true, trim: true },
     options: [{ type: String, trim: true }],
     isRequired: { type: Boolean, required: true },
+    dependsOn: { type: conditionSchema, required: false, default: null },
   },
   { _id: false }
 );

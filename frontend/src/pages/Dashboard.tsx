@@ -153,7 +153,7 @@ export default function Dashboard() {
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => navigate(`/take-survey/${survey.id}`)}
+                      onClick={() => navigate(`/take-survey/${survey.id}?preview=true`)}
                     >
                       תצוגה מקדימה
                     </Button>

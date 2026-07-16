@@ -1,11 +1,17 @@
 export type QuestionType = 'open' | 'multiple-choice' | 'rating';
 
+export interface Condition {
+  questionId: string;
+  value: string;
+}
+
 export interface Question {
   id: string;
   type: QuestionType;
   title: string;
   options?: string[];
   isRequired: boolean;
+  dependsOn?: Condition | null;
 }
 
 export interface Section {
