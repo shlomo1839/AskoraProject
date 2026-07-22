@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { AuthRequest } from '../types/auth-request';
 import { Survey, toPublicSurvey } from '../models/Survey';
+import { SurveyVersion } from '../models/SurveyVersion';
 import { Submission } from '../models/Submission';
 import { validateSurveyInput } from '../utils/validateSurvey';
 import {
@@ -14,6 +15,7 @@ import type { ISection } from '../models/Survey';
 
 interface SurveyBody {
   id?: string;
+  version?: number;
   title?: string;
   description?: string;
   sections?: ISection[];
@@ -38,11 +40,22 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
 
   const survey = await Survey.create({
     id: body.id?.trim() || crypto.randomUUID(),
+    version: 1,
     title: validated.title,
     description: validated.description,
     sections: validated.sections,
     closesAt: validated.closesAt,
     createdBy: userId,
+  });
+
+  await SurveyVersion.create({
+    surveyId: survey.id,
+    version: survey.version,
+    title: survey.title,
+    description: survey.description,
+    sections: survey.sections,
+    closesAt: survey.closesAt,
+    createdBy: survey.createdBy,
   });
 
   res.status(201).json({
@@ -76,11 +89,22 @@ export async function updateSurvey(req: Request, res: Response): Promise<void> {
 
   const validated = validateSurveyInput(body);
 
+  survey.version += 1;
   survey.title = validated.title;
   survey.description = validated.description;
   survey.sections = validated.sections;
   survey.closesAt = validated.closesAt;
   await survey.save();
+
+  await SurveyVersion.create({
+    surveyId: survey.id,
+    version: survey.version,
+    title: survey.title,
+    description: survey.description,
+    sections: survey.sections,
+    closesAt: survey.closesAt,
+    createdBy: userId,
+  });
 
   res.json({
     message: 'הסקר עודכן בהצלחה',
@@ -96,6 +120,7 @@ export async function deleteSurvey(req: Request, res: Response): Promise<void> {
   verifySurveyOwner(survey, userId);
 
   await Submission.deleteMany({ surveyId });
+  await SurveyVersion.deleteMany({ surveyId });
   await Survey.deleteOne({ id: surveyId });
 
   res.json({

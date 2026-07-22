@@ -23,12 +23,23 @@ export interface Section {
 
 export interface Survey {
   id: string;
+  version: number;
   title: string;
   description: string;
   sections: Section[];
   createdBy: string;
   createdAt: string;
   closesAt?: string | null;
+}
+
+export interface SurveyVersionMetadata {
+  version: number;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface SurveyVersion extends Survey {
+  surveyId: string;
 }
 
 export interface Answer {

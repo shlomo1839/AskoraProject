@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Answer, Survey, SurveySubmission } from '../types/survey.types';
+import type { Answer, Survey, SurveySubmission, SurveyVersion, SurveyVersionMetadata } from '../types/survey.types';
 
 interface SurveyPayload {
   id?: string;
@@ -43,5 +43,26 @@ export const SurveyService = {
       `/api/surveys/${surveyId}/submissions`
     );
     return response.data.submissions;
+  },
+
+  async getSurveyVersions(surveyId: string): Promise<SurveyVersionMetadata[]> {
+    const response = await api.get<{ versions: SurveyVersionMetadata[] }>(
+      `/api/surveys/${surveyId}/versions`
+    );
+    return response.data.versions;
+  },
+
+  async getSurveyVersion(surveyId: string, version: number): Promise<SurveyVersion> {
+    const response = await api.get<{ surveyVersion: SurveyVersion }>(
+      `/api/surveys/${surveyId}/versions/${version}`
+    );
+    return response.data.surveyVersion;
+  },
+
+  async restoreSurveyVersion(surveyId: string, version: number): Promise<Survey> {
+    const response = await api.post<{ message: string; survey: Survey }>(
+      `/api/surveys/${surveyId}/versions/${version}/restore`
+    );
+    return response.data.survey;
   },
 };

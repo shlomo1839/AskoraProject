@@ -11,14 +11,17 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useParams } from 'react-router-dom';
+import HistoryIcon from '@mui/icons-material/History';
 import AppLayout from '../components/AppLayout';
 import SectionEditorCard from '../components/survey/SectionEditorCard';
 import SurveyLinkDialog from '../components/survey/SurveyLinkDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
+import VersionHistoryDialog from '../components/survey/VersionHistoryDialog';
+import VersionPreviewDialog from '../components/survey/VersionPreviewDialog';
 import { AuthStorage } from '../services/authStorage';
 import { SurveyService } from '../services/surveyService';
 import { createEmptyQuestion, createEmptySection } from '../utils/surveyUtils';
-import type { Question, Section } from '../types/survey.types';
+import type { Question, Section, SurveyVersion } from '../types/survey.types';
 
 // Converts an ISO timestamp to the value format expected by <input type="datetime-local">.
 function isoToLocalInput(iso?: string | null): string {
@@ -45,6 +48,7 @@ export default function CreateSurvey() {
   const [description, setDescription] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [sections, setSections] = useState<Section[]>([createEmptySection()]);
+  const [_version, setVersion] = useState<number | undefined>(undefined);
   const [titleError, setTitleError] = useState('');
   const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
   const [questionErrors, setQuestionErrors] = useState<Record<string, string>>({});
@@ -59,6 +63,9 @@ export default function CreateSurvey() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+  
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [previewVersion, setPreviewVersion] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isEditMode || !surveyId) {
@@ -81,6 +88,7 @@ export default function CreateSurvey() {
         setDescription(existingSurvey.description);
         setClosesAt(isoToLocalInput(existingSurvey.closesAt));
         setSections(existingSurvey.sections);
+        setVersion(existingSurvey.version);
       })
       .catch(() => setGeneralError('הסקר לא נמצא'))
       .finally(() => setLoading(false));
@@ -258,9 +266,9 @@ export default function CreateSurvey() {
 
     try {
       if (isEditMode && surveyId) {
-        await SurveyService.updateSurvey(surveyId, payload);
+        const updated = await SurveyService.updateSurvey(surveyId, payload);
+        setVersion(updated.version);
         setSnackbarOpen(true);
-        setTimeout(() => navigate('/dashboard'), 1500);
         return;
       }
 
@@ -271,12 +279,30 @@ export default function CreateSurvey() {
 
       setSavedSurveyId(created.id);
       setDialogOpen(true);
-      setTitle('');
-      setDescription('');
-      setClosesAt('');
-      setSections([createEmptySection()]);
+      
+      // Navigate to edit mode so they can see version history and continue editing
+      navigate(`/edit-survey/${created.id}`, { replace: true });
     } catch (err) {
       setGeneralError(err instanceof Error ? err.message : 'שגיאה בשמירת הסקר');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRestoreVersion = async (versionData: SurveyVersion) => {
+    try {
+      setSaving(true);
+      const restored = await SurveyService.restoreSurveyVersion(surveyId!, versionData.version);
+      setTitle(restored.title);
+      setDescription(restored.description);
+      setClosesAt(isoToLocalInput(restored.closesAt));
+      setSections(restored.sections);
+      setVersion(restored.version);
+      setPreviewVersion(null);
+      setHistoryOpen(false);
+      setSnackbarOpen(true);
+    } catch (err: any) {
+      setGeneralError(err.message || 'שגיאה בשחזור גרסה');
     } finally {
       setSaving(false);
     }
@@ -310,13 +336,24 @@ export default function CreateSurvey() {
   return (
     <AppLayout>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/dashboard')}
-          sx={{ mb: 2 }}
-        >
-          חזרה ללוח הבקרה
-        </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/dashboard')}
+          >
+            חזרה ללוח הבקרה
+          </Button>
+
+          {isEditMode && (
+            <Button
+              startIcon={<HistoryIcon />}
+              onClick={() => setHistoryOpen(true)}
+              variant="outlined"
+            >
+              היסטוריית גרסאות
+            </Button>
+          )}
+        </Box>
 
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
           {isEditMode ? 'עריכת סקר' : 'יצירת סקר חדש'}
@@ -427,9 +464,27 @@ export default function CreateSurvey() {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
-            הסקר עודכן בהצלחה
+            הסקר נשמר בהצלחה
           </Alert>
         </Snackbar>
+
+        {isEditMode && surveyId && (
+          <>
+            <VersionHistoryDialog
+              open={historyOpen}
+              surveyId={surveyId}
+              onClose={() => setHistoryOpen(false)}
+              onSelectVersion={(v) => setPreviewVersion(v)}
+            />
+            <VersionPreviewDialog
+              open={previewVersion !== null}
+              surveyId={surveyId}
+              version={previewVersion}
+              onClose={() => setPreviewVersion(null)}
+              onRestore={handleRestoreVersion}
+            />
+          </>
+        )}
       </Container>
     </AppLayout>
   );

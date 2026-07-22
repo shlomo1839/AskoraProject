@@ -25,6 +25,7 @@ export interface ISection {
 
 export interface ISurvey extends Document {
   id: string;
+  version: number;
   title: string;
   description: string;
   sections: ISection[];
@@ -66,6 +67,7 @@ const sectionSchema = new Schema<ISection>(
 const surveySchema = new Schema<ISurvey>(
   {
     id: { type: String, required: true, unique: true },
+    version: { type: Number, required: true, default: 1 },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     sections: { type: [sectionSchema], required: true },
@@ -83,6 +85,7 @@ export const Survey = mongoose.model<ISurvey>('Survey', surveySchema);
 export function toPublicSurvey(survey: ISurvey) {
   return {
     id: survey.id,
+    version: survey.version,
     title: survey.title,
     description: survey.description,
     sections: survey.sections,
