@@ -6,8 +6,8 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  SelectChangeEvent,
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 
 export type SurveyStatusFilter = 'ALL' | 'OPEN' | 'CLOSED';
@@ -49,12 +49,14 @@ export default function SurveySearch({
         placeholder="חיפוש סקר לפי כותרת או תיאור..."
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          },
         }}
         size="small"
       />
