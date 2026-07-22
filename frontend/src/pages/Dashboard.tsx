@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { SurveyService } from '../services/surveyService';
 import { getTotalQuestionCount, getTotalSectionCount } from '../utils/surveyUtils';
 import type { Survey } from '../types/survey.types';
+import SurveySearch, { type SurveyStatusFilter } from '../components/survey/SurveySearch';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -41,8 +42,30 @@ export default function Dashboard() {
     return new Date(dateString).toLocaleDateString('he-IL');
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<SurveyStatusFilter>('ALL');
+
   const isSurveyClosed = (survey: Survey) =>
     Boolean(survey.closesAt) && new Date(survey.closesAt as string).getTime() <= Date.now();
+
+  const filteredSurveys = useMemo(() => {
+    return surveys.filter((survey) => {
+      const isClosed = isSurveyClosed(survey);
+      
+      if (statusFilter === 'OPEN' && isClosed) return false;
+      if (statusFilter === 'CLOSED' && !isClosed) return false;
+
+      if (!searchQuery.trim()) return true;
+
+      const query = searchQuery.toLowerCase();
+      const titleMatch = survey.title.toLowerCase().includes(query);
+      const descMatch = (survey.description || '').toLowerCase().includes(query);
+      const statusName = isClosed ? 'סגור' : 'פתוח';
+      const statusNameMatch = statusName.includes(query);
+
+      return titleMatch || descMatch || statusNameMatch;
+    });
+  }, [surveys, searchQuery, statusFilter]);
 
   const showMessage = (message: string) => {
     setSnackbar({ open: true, message });
@@ -120,9 +143,21 @@ export default function Dashboard() {
             </Button>
           </Box>
         ) : (
-          <Grid container spacing={3}>
-            {surveys.map((survey) => (
-              <Grid key={survey.id} size={{ xs: 12, sm: 6, md: 4 }}>
+          <>
+            <SurveySearch
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              onSearchChange={setSearchQuery}
+              onStatusChange={setStatusFilter}
+            />
+            {filteredSurveys.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography color="text.secondary">לא נמצאו סקרים התואמים לחיפוש.</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {filteredSurveys.map((survey) => (
+                  <Grid key={survey.id} size={{ xs: 12, sm: 6, md: 4 }}>
                 <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -168,7 +203,9 @@ export default function Dashboard() {
                 </Card>
               </Grid>
             ))}
-          </Grid>
+              </Grid>
+            )}
+          </>
         )}
       </Container>
 
