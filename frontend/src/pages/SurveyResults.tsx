@@ -245,7 +245,7 @@ export default function SurveyResults() {
             onClick={handleExportCsv}
             disabled={submissions.length === 0 || exporting}
           >
-            Export CSV
+            ייצוא CSV
           </Button>
         </Box>
 

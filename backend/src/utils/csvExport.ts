@@ -20,12 +20,15 @@ function formatAnswerValue(value: IAnswer['value'] | undefined): string {
 }
 
 function slugifyTitle(title: string): string {
+  // HTTP Content-Disposition must be ASCII-safe; drop non-ASCII (e.g. Hebrew).
   const slug = title
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^\p{L}\p{N}-]/gu, '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .slice(0, 60);
-  return slug || 'survey';
+  return slug || 'export';
 }
 
 export function buildCsvFilename(surveyTitle: string): string {
