@@ -65,4 +65,23 @@ export const SurveyService = {
     );
     return response.data.survey;
   },
+
+  async exportSurveySubmissionsCsv(surveyId: string): Promise<void> {
+    const response = await api.get<Blob>(`/api/surveys/${surveyId}/submissions/export/csv`, {
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'] as string | undefined;
+    const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+    const filename = filenameMatch?.[1] ?? `survey-${surveyId}-responses.csv`;
+
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
 };

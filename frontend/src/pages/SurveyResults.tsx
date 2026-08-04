@@ -12,6 +12,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
 import { SurveyService } from '../services/surveyService';
@@ -125,6 +126,8 @@ export default function SurveyResults() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [forbidden, setForbidden] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     if (!surveyId) {
@@ -159,6 +162,23 @@ export default function SurveyResults() {
 
     loadData();
   }, [surveyId]);
+
+  const handleExportCsv = async () => {
+    if (!surveyId || submissions.length === 0) {
+      return;
+    }
+
+    setExporting(true);
+    setExportError('');
+
+    try {
+      await SurveyService.exportSurveySubmissionsCsv(surveyId);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'שגיאה בייצוא הקובץ');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -217,11 +237,23 @@ export default function SurveyResults() {
           תוצאות: {survey.title}
         </Typography>
 
-        <Chip
-          label={`${submissions.length} משיבים`}
-          color="primary"
-          sx={{ mb: 4 }}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+          <Chip label={`${submissions.length} משיבים`} color="primary" />
+          <Button
+            variant="outlined"
+            startIcon={exporting ? <CircularProgress size={16} /> : <FileDownloadIcon />}
+            onClick={handleExportCsv}
+            disabled={submissions.length === 0 || exporting}
+          >
+            ייצוא CSV
+          </Button>
+        </Box>
+
+        {exportError && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setExportError('')}>
+            {exportError}
+          </Alert>
+        )}
 
         {submissions.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>

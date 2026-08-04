@@ -8,6 +8,8 @@ import {
   verifySurveyOwner,
 } from '../utils/surveyHelpers';
 import { validateSubmissionAnswers } from '../utils/validateSubmission';
+import { cacheGet, cacheSet, cacheDelete } from '../utils/cache';
+import { buildCsvFilename, buildSubmissionsCsv } from '../utils/csvExport';
 
 interface SubmitBody {
   id?: string;
@@ -32,6 +34,9 @@ export async function submitSurvey(req: Request, res: Response): Promise<void> {
     submittedAt: new Date(),
   });
 
+  // Invalidate submissions cache for this survey
+  await cacheDelete(`submissions:${surveyId}`);
+
   res.status(201).json({
     message: 'התשובות נשמרו בהצלחה',
     submission: toPublicSubmission(submission),
@@ -45,9 +50,33 @@ export async function getSurveySubmissions(req: Request, res: Response): Promise
   const survey = await findSurveyOrThrow(surveyId);
   verifySurveyOwner(survey, userId, 'אין לך הרשאה לצפות בתוצאות של סקר זה');
 
-  const submissions = await Submission.find({ surveyId }).sort({ submittedAt: -1 });
+  const cacheKey = `submissions:${surveyId}`;
+  const cached = await cacheGet<ReturnType<typeof toPublicSubmission>[]>(cacheKey);
+  if (cached) {
+    res.json({ submissions: cached });
+    return;
+  }
 
-  res.json({
-    submissions: submissions.map(toPublicSubmission),
-  });
+  const submissions = await Submission.find({ surveyId }).sort({ submittedAt: -1 });
+  const result = submissions.map(toPublicSubmission);
+
+  await cacheSet(cacheKey, result, 120); // 2 minutes
+
+  res.json({ submissions: result });
+}
+
+export async function exportSurveySubmissionsCsv(req: Request, res: Response): Promise<void> {
+  const { userId } = req as AuthRequest;
+  const surveyId = getRouteParam(req, 'surveyId');
+
+  const survey = await findSurveyOrThrow(surveyId);
+  verifySurveyOwner(survey, userId, 'אין לך הרשאה לצפות בתוצאות של סקר זה');
+
+  const submissions = await Submission.find({ surveyId }).sort({ submittedAt: -1 });
+  const csv = buildSubmissionsCsv(survey, submissions);
+  const filename = buildCsvFilename(survey.title);
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
 }
