@@ -1,9 +1,11 @@
 import { createApp } from './app';
 import { connectDB } from './config/db';
+import { connectRedis } from './config/redis';
 import { env } from './config/env';
 
 async function start(): Promise<void> {
   await connectDB();
+  await connectRedis();
 
   const app = createApp();
 

@@ -12,6 +12,7 @@ import {
 } from '../utils/surveyHelpers';
 import { getOptionalUserId } from '../middleware/auth.middleware';
 import type { ISection } from '../models/Survey';
+import { cacheGet, cacheSet, cacheDelete, cacheDeletePattern } from '../utils/cache';
 
 interface SurveyBody {
   id?: string;
@@ -25,11 +26,19 @@ interface SurveyBody {
 export async function getMySurveys(req: Request, res: Response): Promise<void> {
   const { userId } = req as AuthRequest;
 
-  const surveys = await Survey.find({ createdBy: userId }).sort({ createdAt: -1 });
+  const cacheKey = `surveys:user:${userId}`;
+  const cached = await cacheGet<ReturnType<typeof toPublicSurvey>[]>(cacheKey);
+  if (cached) {
+    res.json({ surveys: cached });
+    return;
+  }
 
-  res.json({
-    surveys: surveys.map(toPublicSurvey),
-  });
+  const surveys = await Survey.find({ createdBy: userId }).sort({ createdAt: -1 });
+  const result = surveys.map(toPublicSurvey);
+
+  await cacheSet(cacheKey, result, 120); // 2 minutes
+
+  res.json({ surveys: result });
 }
 
 export async function createSurvey(req: Request, res: Response): Promise<void> {
@@ -58,6 +67,9 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
     createdBy: survey.createdBy,
   });
 
+  // Invalidate user's survey list cache
+  await cacheDelete(`surveys:user:${userId}`);
+
   res.status(201).json({
     message: 'הסקר נוצר בהצלחה',
     survey: toPublicSurvey(survey),
@@ -65,7 +77,22 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
 }
 
 export async function getSurveyById(req: Request, res: Response): Promise<void> {
-  const survey = await findSurveyOrThrow(getRouteParam(req, 'id'));
+  const surveyId = getRouteParam(req, 'id');
+
+  const cacheKey = `survey:${surveyId}`;
+  const cached = await cacheGet<ReturnType<typeof toPublicSurvey>>(cacheKey);
+
+  if (cached) {
+    // Still need to enforce deadline for non-owners
+    const requesterId = getOptionalUserId(req);
+    if (cached.createdBy !== requesterId && cached.closesAt && new Date(cached.closesAt).getTime() <= Date.now()) {
+      assertSurveyOpen({ closesAt: new Date(cached.closesAt) });
+    }
+    res.json({ survey: cached });
+    return;
+  }
+
+  const survey = await findSurveyOrThrow(surveyId);
 
   // The owner may always load the survey (e.g. to edit or extend the deadline).
   // Respondents are blocked once the deadline has passed.
@@ -74,9 +101,10 @@ export async function getSurveyById(req: Request, res: Response): Promise<void> 
     assertSurveyOpen(survey);
   }
 
-  res.json({
-    survey: toPublicSurvey(survey),
-  });
+  const result = toPublicSurvey(survey);
+  await cacheSet(cacheKey, result, 300); // 5 minutes
+
+  res.json({ survey: result });
 }
 
 export async function updateSurvey(req: Request, res: Response): Promise<void> {
@@ -106,6 +134,12 @@ export async function updateSurvey(req: Request, res: Response): Promise<void> {
     createdBy: userId,
   });
 
+  // Invalidate related caches
+  await cacheDelete(`survey:${surveyId}`);
+  await cacheDelete(`surveys:user:${userId}`);
+  await cacheDeletePattern(`versions:${surveyId}`);
+  await cacheDeletePattern(`version:${surveyId}:*`);
+
   res.json({
     message: 'הסקר עודכן בהצלחה',
     survey: toPublicSurvey(survey),
@@ -122,6 +156,13 @@ export async function deleteSurvey(req: Request, res: Response): Promise<void> {
   await Submission.deleteMany({ surveyId });
   await SurveyVersion.deleteMany({ surveyId });
   await Survey.deleteOne({ id: surveyId });
+
+  // Invalidate related caches
+  await cacheDelete(`survey:${surveyId}`);
+  await cacheDelete(`surveys:user:${userId}`);
+  await cacheDelete(`submissions:${surveyId}`);
+  await cacheDeletePattern(`versions:${surveyId}`);
+  await cacheDeletePattern(`version:${surveyId}:*`);
 
   res.json({
     message: 'הסקר נמחק בהצלחה',

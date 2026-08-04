@@ -9,7 +9,11 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(
+    cors({
+      exposedHeaders: ['Content-Disposition'],
+    })
+  );
   app.use(express.json());
 
   app.use('/api', healthRoutes);
