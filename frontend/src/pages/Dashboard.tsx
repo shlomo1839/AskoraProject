@@ -27,7 +27,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
     SurveyService.getMySurveys()
@@ -67,8 +68,8 @@ export default function Dashboard() {
     });
   }, [surveys, searchQuery, statusFilter]);
 
-  const showMessage = (message: string) => {
-    setSnackbar({ open: true, message });
+  const showMessage = (message: string, severity: 'success' | 'error' = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const handleCopyLink = async (surveyId: string) => {
@@ -77,7 +78,20 @@ export default function Dashboard() {
       await navigator.clipboard.writeText(surveyUrl);
       showMessage('הקישור הועתק בהצלחה');
     } catch {
-      showMessage('לא הצלחנו להעתיק את הקישור');
+      showMessage('לא הצלחנו להעתיק את הקישור', 'error');
+    }
+  };
+
+  const handleDuplicate = async (survey: Survey) => {
+    setDuplicatingId(survey.id);
+    try {
+      const duplicated = await SurveyService.duplicateSurvey(survey.id);
+      setSurveys((prev) => [duplicated, ...prev]);
+      showMessage('הסקר שוכפל בהצלחה');
+    } catch (err) {
+      showMessage(err instanceof Error ? err.message : 'שגיאה בשכפול הסקר', 'error');
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -187,6 +201,13 @@ export default function Dashboard() {
                     </Button>
                     <Button
                       size="small"
+                      onClick={() => handleDuplicate(survey)}
+                      disabled={duplicatingId === survey.id}
+                    >
+                      {duplicatingId === survey.id ? 'משכפל...' : 'שכפול'}
+                    </Button>
+                    <Button
+                      size="small"
                       variant="outlined"
                       onClick={() => navigate(`/take-survey/${survey.id}?preview=true`)}
                     >
@@ -221,10 +242,10 @@ export default function Dashboard() {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
-        onClose={() => setSnackbar({ open: false, message: '' })}
+        onClose={() => setSnackbar({ open: false, message: '', severity: 'success' })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
+        <Alert severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

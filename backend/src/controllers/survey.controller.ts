@@ -13,6 +13,7 @@ import {
 import { getOptionalUserId } from '../middleware/auth.middleware';
 import type { ISection } from '../models/Survey';
 import { cacheGet, cacheSet, cacheDelete, cacheDeletePattern } from '../utils/cache';
+import { cloneSurveySections } from '../utils/cloneSurvey';
 
 interface SurveyBody {
   id?: string;
@@ -166,5 +167,40 @@ export async function deleteSurvey(req: Request, res: Response): Promise<void> {
 
   res.json({
     message: 'הסקר נמחק בהצלחה',
+  });
+}
+
+export async function duplicateSurvey(req: Request, res: Response): Promise<void> {
+  const { userId } = req as AuthRequest;
+  const surveyId = getRouteParam(req, 'id');
+
+  const source = await findSurveyOrThrow(surveyId);
+  verifySurveyOwner(source, userId);
+
+  const survey = await Survey.create({
+    id: crypto.randomUUID(),
+    version: 1,
+    title: `${source.title} (עותק)`,
+    description: source.description,
+    sections: cloneSurveySections(source.sections),
+    closesAt: source.closesAt ?? null,
+    createdBy: userId,
+  });
+
+  await SurveyVersion.create({
+    surveyId: survey.id,
+    version: survey.version,
+    title: survey.title,
+    description: survey.description,
+    sections: survey.sections,
+    closesAt: survey.closesAt,
+    createdBy: survey.createdBy,
+  });
+
+  await cacheDelete(`surveys:user:${userId}`);
+
+  res.status(201).json({
+    message: 'הסקר שוכפל בהצלחה',
+    survey: toPublicSurvey(survey),
   });
 }

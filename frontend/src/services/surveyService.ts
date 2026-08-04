@@ -29,6 +29,13 @@ export const SurveyService = {
     await api.delete(`/api/surveys/${surveyId}`);
   },
 
+  async duplicateSurvey(surveyId: string): Promise<Survey> {
+    const response = await api.post<{ message: string; survey: Survey }>(
+      `/api/surveys/${surveyId}/duplicate`
+    );
+    return response.data.survey;
+  },
+
   async getSurveyById(surveyId: string): Promise<Survey> {
     const response = await api.get<{ survey: Survey }>(`/api/surveys/${surveyId}`);
     return response.data.survey;

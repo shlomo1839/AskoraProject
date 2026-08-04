@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createSurvey,
   deleteSurvey,
+  duplicateSurvey,
   getMySurveys,
   getSurveyById,
   updateSurvey,
@@ -17,6 +18,7 @@ const router = Router();
 
 router.get('/surveys', requireAuth, getMySurveys);
 router.post('/surveys', requireAuth, createSurvey);
+router.post('/surveys/:id/duplicate', requireAuth, duplicateSurvey);
 router.get('/surveys/:id', getSurveyById);
 router.put('/surveys/:id', requireAuth, updateSurvey);
 router.delete('/surveys/:id', requireAuth, deleteSurvey);
