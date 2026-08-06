@@ -5,16 +5,21 @@ import authRoutes from './routes/auth.routes';
 import surveyRoutes from './routes/survey.routes';
 import submissionRoutes from './routes/submission.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import {
+  CACHE_EVENTS_HEADER,
+  cacheEventsMiddleware,
+} from './middleware/cacheEvents.middleware';
 
 export function createApp() {
   const app = express();
 
   app.use(
     cors({
-      exposedHeaders: ['Content-Disposition'],
+      exposedHeaders: ['Content-Disposition', CACHE_EVENTS_HEADER],
     })
   );
   app.use(express.json());
+  app.use(cacheEventsMiddleware);
 
   app.use('/api', healthRoutes);
   app.use('/api', authRoutes);

@@ -4,6 +4,7 @@ import { theme } from './theme/theme';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
+import CacheLogPanel from './components/CacheLogPanel';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CreateSurvey from './pages/CreateSurvey';
@@ -54,6 +55,7 @@ function App() {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <CacheLogPanel />
         </BrowserRouter>
       </ErrorBoundary>
     </ThemeProvider>

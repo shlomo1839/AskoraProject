@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { AuthStorage } from './authStorage';
+import { cacheLogStore, type CacheLogEvent } from './cacheLogStore';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
+const CACHE_EVENTS_HEADER = 'x-cache-events';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -25,10 +27,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**ss
+function ingestCacheEvents(headers: Record<string, unknown> | undefined): void {
+  if (!headers) return;
+
+  const raw =
+    headers[CACHE_EVENTS_HEADER] ??
+    headers['X-Cache-Events'] ??
+    (typeof (headers as { get?: (name: string) => unknown }).get === 'function'
+      ? (headers as { get: (name: string) => unknown }).get(CACHE_EVENTS_HEADER)
+      : undefined);
+
+  const headerValue = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof headerValue !== 'string' || !headerValue) return;
+
+  try {
+    const parsed = JSON.parse(headerValue) as Array<Omit<CacheLogEvent, 'at'>>;
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    cacheLogStore.push(parsed);
+  } catch {
+    // Ignore malformed cache headers
+  }
+}
+
+/**
  * Response Interceptor:
- * Passes successful responses through, but catches server errors
- * to extract a clean error message for the frontend to use.
+ * Surfaces cache events to the UI, and maps server errors to ApiError.
  */
 export interface ApiError extends Error {
   status?: number;
@@ -36,8 +59,13 @@ export interface ApiError extends Error {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    ingestCacheEvents(response.headers as Record<string, unknown>);
+    return response;
+  },
   (error) => {
+    ingestCacheEvents(error.response?.headers as Record<string, unknown> | undefined);
+
     const message = error.response?.data?.message || 'שגיאה בשרת';
     const apiError: ApiError = new Error(message);
     apiError.status = error.response?.status;
