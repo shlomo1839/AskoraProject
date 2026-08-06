@@ -1,6 +1,8 @@
-import mongoose, { Schema, type Document } from 'mongoose';
+import mongoose, { Schema ,type Document } from 'mongoose';
 
 export type QuestionType = 'open' | 'multiple-choice' | 'rating';
+
+export type SurveyStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface ICondition {
   questionId: string;
@@ -32,6 +34,7 @@ export interface ISurvey extends Document {
   createdBy: string;
   createdAt: Date;
   closesAt?: Date | null;
+  status: SurveyStatus;
 }
 
 const conditionSchema = new Schema<ICondition>(
@@ -74,6 +77,12 @@ const surveySchema = new Schema<ISurvey>(
     createdBy: { type: String, required: true, index: true },
     // Optional deadline. When null, the survey never closes automatically.
     closesAt: { type: Date, default: null },
+    status: {
+      type: String,
+      enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'],
+      default: 'PUBLISHED',
+      required: true,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
@@ -92,5 +101,6 @@ export function toPublicSurvey(survey: ISurvey) {
     createdBy: survey.createdBy,
     createdAt: survey.createdAt.toISOString(),
     closesAt: survey.closesAt ? survey.closesAt.toISOString() : null,
+    status: survey.status,
   };
 }
