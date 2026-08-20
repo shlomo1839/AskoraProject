@@ -1,19 +1,24 @@
-import type { Request, Response } from 'express';
-import type { AuthRequest } from '../types/auth-request';
-import { Survey, toPublicSurvey } from '../models/Survey';
-import { SurveyVersion } from '../models/SurveyVersion';
-import { Submission } from '../models/Submission';
-import { validateSurveyInput } from '../utils/validateSurvey';
+import type { Request, Response } from "express";
+import type { AuthRequest } from "../types/auth-request";
+import { Survey, toPublicSurvey } from "../models/Survey";
+import { SurveyVersion } from "../models/SurveyVersion";
+import { Submission } from "../models/Submission";
+import { validateSurveyInput } from "../utils/validateSurvey";
 import {
   assertSurveyOpen,
   findSurveyOrThrow,
   getRouteParam,
   verifySurveyOwner,
-} from '../utils/surveyHelpers';
-import { getOptionalUserId } from '../middleware/auth.middleware';
-import type { ISection } from '../models/Survey';
-import { cacheGet, cacheSet, cacheDelete, cacheDeletePattern } from '../utils/cache';
-import { cloneSurveySections } from '../utils/cloneSurvey';
+} from "../utils/surveyHelpers";
+import { getOptionalUserId } from "../middleware/auth.middleware";
+import type { ISection } from "../models/Survey";
+import {
+  cacheGet,
+  cacheSet,
+  cacheDelete,
+  cacheDeletePattern,
+} from "../utils/cache";
+import { cloneSurveySections } from "../utils/cloneSurvey";
 
 interface SurveyBody {
   id?: string;
@@ -34,7 +39,9 @@ export async function getMySurveys(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const surveys = await Survey.find({ createdBy: userId }).sort({ createdAt: -1 });
+  const surveys = await Survey.find({ createdBy: userId }).sort({
+    createdAt: -1,
+  });
   const result = surveys.map(toPublicSurvey);
 
   await cacheSet(cacheKey, result, 120); // 2 minutes
@@ -72,13 +79,16 @@ export async function createSurvey(req: Request, res: Response): Promise<void> {
   await cacheDelete(`surveys:user:${userId}`);
 
   res.status(201).json({
-    message: 'הסקר נוצר בהצלחה',
+    message: "הסקר נוצר בהצלחה",
     survey: toPublicSurvey(survey),
   });
 }
 
-export async function getSurveyById(req: Request, res: Response): Promise<void> {
-  const surveyId = getRouteParam(req, 'id');
+export async function getSurveyById(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const surveyId = getRouteParam(req, "id");
 
   const cacheKey = `survey:${surveyId}`;
   const cached = await cacheGet<ReturnType<typeof toPublicSurvey>>(cacheKey);
@@ -86,7 +96,11 @@ export async function getSurveyById(req: Request, res: Response): Promise<void> 
   if (cached) {
     // Still need to enforce deadline for non-owners
     const requesterId = getOptionalUserId(req);
-    if (cached.createdBy !== requesterId && cached.closesAt && new Date(cached.closesAt).getTime() <= Date.now()) {
+    if (
+      cached.createdBy !== requesterId &&
+      cached.closesAt &&
+      new Date(cached.closesAt).getTime() <= Date.now()
+    ) {
       assertSurveyOpen({ closesAt: new Date(cached.closesAt) });
     }
     res.json({ survey: cached });
@@ -110,7 +124,7 @@ export async function getSurveyById(req: Request, res: Response): Promise<void> 
 
 export async function updateSurvey(req: Request, res: Response): Promise<void> {
   const { userId } = req as AuthRequest;
-  const surveyId = getRouteParam(req, 'id');
+  const surveyId = getRouteParam(req, "id");
   const body = req.body as SurveyBody;
 
   const survey = await findSurveyOrThrow(surveyId);
@@ -142,14 +156,14 @@ export async function updateSurvey(req: Request, res: Response): Promise<void> {
   await cacheDeletePattern(`version:${surveyId}:*`);
 
   res.json({
-    message: 'הסקר עודכן בהצלחה',
+    message: "הסקר עודכן בהצלחה",
     survey: toPublicSurvey(survey),
   });
 }
 
 export async function deleteSurvey(req: Request, res: Response): Promise<void> {
   const { userId } = req as AuthRequest;
-  const surveyId = getRouteParam(req, 'id');
+  const surveyId = getRouteParam(req, "id");
 
   const survey = await findSurveyOrThrow(surveyId);
   verifySurveyOwner(survey, userId);
@@ -166,13 +180,16 @@ export async function deleteSurvey(req: Request, res: Response): Promise<void> {
   await cacheDeletePattern(`version:${surveyId}:*`);
 
   res.json({
-    message: 'הסקר נמחק בהצלחה',
+    message: "הסקר נמחק בהצלחה",
   });
 }
 
-export async function duplicateSurvey(req: Request, res: Response): Promise<void> {
+export async function duplicateSurvey(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const { userId } = req as AuthRequest;
-  const surveyId = getRouteParam(req, 'id');
+  const surveyId = getRouteParam(req, "id");
 
   const source = await findSurveyOrThrow(surveyId);
   verifySurveyOwner(source, userId);
@@ -200,7 +217,26 @@ export async function duplicateSurvey(req: Request, res: Response): Promise<void
   await cacheDelete(`surveys:user:${userId}`);
 
   res.status(201).json({
-    message: 'הסקר שוכפל בהצלחה',
+    message: "הסקר שוכפל בהצלחה",
+    survey: toPublicSurvey(survey),
+  });
+}
+
+export async function archiveSurvey(req: Request, res: Response): Promise<void> {
+  const { userId } = req as AuthRequest;
+  const surveyId = getRouteParam(req, "id");
+
+  const survey = await findSurveyOrThrow(surveyId);
+  verifySurveyOwner(survey, userId);
+
+  survey.status = "ARCHIVED";
+  await survey.save();
+
+  await cacheDelete(`survey:${surveyId}`);
+  await cacheDelete(`surveys:user:${userId}`);
+
+  res.json({
+    message: "Survey Move To Archived",
     survey: toPublicSurvey(survey),
   });
 }
